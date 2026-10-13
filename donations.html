@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Live Donations</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root {
+    --sky: #93cce9; --sky-deep: #3d8fbf; --ink: #0f2e44; --paper: #ffffff;
+    --mercury: #e8573f; --mercury-light: #f3ad95; --gold: #f5b82e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink);
+    background: linear-gradient(145deg, #a9d8ef 0%, var(--sky) 60%, #7fbde0 100%);
+    container-type: size;
+  }
+  .stage { display: grid; grid-template-columns: 22cqw 1fr; gap: 4cqw; height: 100%; padding: 5cqh 5cqw; }
+
+  /* thermometer */
+  .thermo { position: relative; display: flex; flex-direction: column; align-items: center; height: 100%; }
+  .tube { position: relative; flex: 1; width: 38%; background: var(--paper); border-radius: 999px 999px 0 0;
+          box-shadow: inset 0 0 0 0.6cqw rgba(15,46,68,.12); overflow: hidden; }
+  .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%;
+          background: linear-gradient(90deg, var(--mercury) 0%, #f07a5f 60%, var(--mercury) 100%);
+          transition: height 1.8s cubic-bezier(.2,.8,.2,1); }
+  .ticks { position: absolute; inset: 6% 0 0 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+  .ticks i { display: block; height: 0.35cqh; width: 30%; background: rgba(15,46,68,.18); }
+  .bulb { width: 70%; aspect-ratio: 1; margin-top: -3cqh; border-radius: 50%; background: var(--mercury);
+          box-shadow: 0 0 0 1cqw var(--paper); display: grid; place-items: center;
+          color: #fff; font-weight: 800; font-size: 4.2cqh; z-index: 1; }
+
+  /* details */
+  .details { display: flex; flex-direction: column; min-width: 0; }
+  h1 { margin: 0 0 2cqh; font-size: 5.6cqh; line-height: 1.1; color: #fff; text-shadow: 0 0.3cqh 1cqh rgba(15,46,68,.25); }
+  .numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw; margin-bottom: 3cqh; }
+  .card { background: rgba(255,255,255,.92); border-radius: 1.6cqh; padding: 2cqh 2cqw; }
+  .label { font-size: 2.6cqh; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; opacity: .65; }
+  .value { font-size: 9cqh; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .value.raised { color: var(--mercury); }
+  .sub { font-size: 2.8cqh; opacity: .7; margin-top: .5cqh; }
+  .donors { flex: 1; min-height: 0; background: rgba(255,255,255,.92); border-radius: 1.6cqh; padding: 2cqh 2cqw; overflow: hidden; }
+  .donors ul { list-style: none; margin: 1cqh 0 0; padding: 0; }
+  .donors li { display: flex; justify-content: space-between; gap: 2cqw; font-size: 3.6cqh; padding: .9cqh 0;
+               border-bottom: 1px solid rgba(15,46,68,.08); animation: slide-in .6s ease-out both; }
+  .donors li:last-child { border-bottom: 0; }
+  .donors li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .donors li span { font-weight: 700; color: var(--mercury); font-variant-numeric: tabular-nums; }
+  .donors .empty { font-size: 3.2cqh; opacity: .55; padding-top: 1.5cqh; }
+  .ttg { margin-top: 2cqh; font-size: 3.2cqh; color: #fff; font-weight: 600; text-shadow: 0 .2cqh .8cqh rgba(15,46,68,.3); }
+  .ttg strong { background: rgba(255,255,255,.25); padding: .2cqh 1cqw; border-radius: .8cqh; }
+  @keyframes slide-in { from { opacity: 0; transform: translateX(-3cqw); } to { opacity: 1; transform: none; } }
+
+  /* celebration */
+  .toast { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.6); opacity: 0;
+           background: var(--paper); border-radius: 2.4cqh; padding: 3cqh 4cqw; text-align: center;
+           box-shadow: 0 2cqh 6cqh rgba(15,46,68,.35); pointer-events: none; z-index: 10; min-width: 45cqw; }
+  .toast.show { animation: pop 4.5s ease forwards; }
+  .toast .t1 { font-size: 4cqh; font-weight: 700; color: var(--sky-deep); }
+  .toast .t2 { font-size: 7.5cqh; font-weight: 800; margin: .5cqh 0; overflow-wrap: anywhere; }
+  .toast .t3 { font-size: 6cqh; font-weight: 800; color: var(--mercury); }
+  @keyframes pop {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(.6); }
+    10%, 85% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(.95); }
+  }
+  .confetti { position: absolute; top: -3cqh; width: 1.2cqw; height: 2.4cqh; z-index: 9; pointer-events: none;
+              animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110cqh) rotate(720deg); } }
+
+  .status { position: absolute; right: 1.2cqw; bottom: 1cqh; font-size: 1.8cqh; color: rgba(255,255,255,.85); display: flex; gap: .6cqw; align-items: center; }
+  .status i { width: 1cqh; height: 1cqh; border-radius: 50%; background: #c4314b; }
+  .status.live i { background: #13a10e; }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } .confetti { display: none; } }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="thermo">
+      <div class="tube"><div class="fill" id="fill"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="bulb" id="pct">0%</div>
+    </div>
+    <div class="details">
+      <h1 id="title">ACEC California Scholarship Foundation Raffle</h1>
+      <div class="numbers">
+        <div class="card"><div class="label">Raised</div><div class="value raised" id="raised">$0</div><div class="sub" id="count">0 donations</div></div>
+        <div class="card"><div class="label">Goal</div><div class="value" id="goal">$0</div><div class="sub" id="remaining">&nbsp;</div></div>
+      </div>
+      <div class="donors"><div class="label">Latest donations</div><ul id="list"></ul></div>
+      <div class="ttg" id="ttg">Text <strong>RAFFLE</strong> to <strong>(916) 312-4078</strong> to give</div>
+    </div>
+  </div>
+  <div class="toast" id="toast"><div class="t1">🎉 Thank you!</div><div class="t2" id="toastName"></div><div class="t3" id="toastAmt"></div></div>
+  <div class="status" id="status"><i></i><span>Connecting…</span></div>
+
+<script>
+// ── Settings (can also be overridden with ?goal=…&title=… in the add-in URL) ──
+const params = new URLSearchParams(location.search);
+const CFG = {
+  merchant: params.get("merchant") || "m_tpqC5TxCt69M6ZFuofDQvA",
+  campaign: params.get("campaign") || "acec-california-scholarship-foundation-raffle-tickets-5",
+  goal: Number(params.get("goal")) || 1000,
+  title: params.get("title") || "ACEC California Scholarship Foundation Raffle",
+  textKeyword: params.get("keyword") ?? "RAFFLE",
+  textNumber: params.get("number") ?? "(916) 312-4078",
+  everySeconds: Math.max(3, Number(params.get("every")) || 5),
+  demo: params.has("demo"),
+};
+const API = "https://core.snowballfundraising.com/api/v5/rest/stats/offers";
+
+const $ = (id) => document.getElementById(id);
+const money = (n) => "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: Number(n) % 1 ? 2 : 0, minimumFractionDigits: Number(n) % 1 ? 2 : 0 });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+$("title").textContent = CFG.title;
+$("goal").textContent = money(CFG.goal);
+if (CFG.textKeyword && CFG.textNumber) $("ttg").innerHTML = "Text <strong>" + esc(CFG.textKeyword) + "</strong> to <strong>" + esc(CFG.textNumber) + "</strong> to give";
+else $("ttg").remove();
+
+let last = null;
+
+function render(s, celebrate) {
+  const pct = CFG.goal ? (s.raised / CFG.goal) * 100 : 0;
+  $("fill").style.height = Math.min(pct, 100) + "%";
+  $("pct").textContent = Math.floor(pct) + "%";
+  $("raised").textContent = money(s.raised);
+  $("count").textContent = s.count + " donation" + (s.count === 1 ? "" : "s");
+  $("remaining").textContent = s.raised >= CFG.goal ? "🏆 Goal reached!" : money(CFG.goal - s.raised) + " to go";
+  $("list").innerHTML = s.donors.length
+    ? s.donors.map((d) => "<li><b>" + esc(d.name) + "</b><span>" + esc(d.amount) + "</span></li>").join("")
+    : '<li class="empty">Be the first to give!</li>';
+  if (celebrate && s.donors[0]) celebrateDonor(s.donors[0], s.count - (last?.count || 0));
+}
+
+function celebrateDonor(d, n) {
+  $("toastName").textContent = n > 1 ? d.name + " + " + (n - 1) + " more" : d.name;
+  $("toastAmt").textContent = d.amount;
+  const t = $("toast"); t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+  const colors = ["#e8573f", "#f5b82e", "#3d8fbf", "#13a10e", "#ffffff"];
+  for (let i = 0; i < 60; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "cqw";
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = 2.5 + Math.random() * 2 + "s";
+    c.style.animationDelay = Math.random() * 0.6 + "s";
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5500);
+  }
+}
+
+function setStatus(ok) {
+  $("status").classList.toggle("live", ok);
+  $("status").querySelector("span").textContent = ok ? (CFG.demo ? "Demo" : "Live") : "Reconnecting…";
+}
+
+async function fetchStats() {
+  const q = new URLSearchParams({ merchant_id: CFG.merchant, campaign: CFG.campaign, transaction_mode: "live", a: "", b: "", more_donations: "false" });
+  const r = await fetch(API + "?" + q, { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  const j = await r.json();
+  return {
+    raised: Number(j.raised) || 0,
+    count: Number(j.raised_transaction_count) || 0,
+    donors: (j.last_five || []).map((d) => ({ name: String(d.name ?? "Anonymous").trim() || "Anonymous", amount: String(d.amount ?? "") })),
+  };
+}
+
+// Demo mode: fake donations so you can see the animation (?demo in the URL)
+const demoNames = ["Maria L.", "Tom K.", "Jen P.", "ACME Engineering", "R. Gupta", "The Chen Family", "Anonymous", "D. Alvarez"];
+let demoState = { raised: 0, count: 0, donors: [] };
+function fakeStats() {
+  if (Math.random() < 0.5 || demoState.count === 0) {
+    const amt = [10, 20, 25, 50, 100][Math.floor(Math.random() * 5)];
+    demoState = { raised: demoState.raised + amt, count: demoState.count + 1,
+      donors: [{ name: demoNames[demoState.count % demoNames.length], amount: money(amt) + ".00" }, ...demoState.donors].slice(0, 5) };
+  }
+  return Promise.resolve(structuredClone(demoState));
+}
+
+async function tick() {
+  try {
+    const s = await (CFG.demo ? fakeStats() : fetchStats());
+    const isNew = last && s.count > last.count;
+    if (!last || isNew || s.raised !== last.raised) render(s, isNew);
+    last = s;
+    setStatus(true);
+  } catch {
+    setStatus(false);
+  }
+  setTimeout(tick, (CFG.demo ? 4 : CFG.everySeconds) * 1000);
+}
+
+// Works inside PowerPoint (Office add-in) and in a normal browser.
+(window.Office ? Office.onReady() : Promise.resolve()).catch(() => {}).finally(tick);
+</script>
+</body>
+</html>
