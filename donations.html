@@ -193,8 +193,32 @@ async function tick() {
   setTimeout(tick, (CFG.demo ? 4 : CFG.everySeconds) * 1000);
 }
 
+// Goal: kept in goal.json in the GitHub repo, refreshed from Snowball by a GitHub Action.
+async function loadGoal() {
+  if (params.get("goal") || CFG.demo) return;
+  const sources = [
+    "https://api.github.com/repos/saifhamid/acec-live-donations/contents/goal.json?ref=main",
+    "goal.json?t=" + Date.now(),
+  ];
+  for (const url of sources) {
+    try {
+      const r = await fetch(url, { cache: "no-store", headers: url.startsWith("https://api.github.com") ? { Accept: "application/vnd.github.raw+json" } : {} });
+      if (!r.ok) continue;
+      const g = Number((await r.json()).goal);
+      if (g > 0) {
+        if (g !== CFG.goal) { CFG.goal = g; $("goal").textContent = money(g); if (last) render(last, false); }
+        return;
+      }
+    } catch {}
+  }
+}
+
 // Works inside PowerPoint (Office add-in) and in a normal browser.
-(window.Office ? Office.onReady() : Promise.resolve()).catch(() => {}).finally(tick);
+(window.Office ? Office.onReady() : Promise.resolve()).catch(() => {}).finally(async () => {
+  await loadGoal();
+  tick();
+  setInterval(loadGoal, 5 * 60 * 1000);
+});
 </script>
 </body>
 </html>
