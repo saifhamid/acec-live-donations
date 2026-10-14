@@ -2,8 +2,8 @@ name: Update goal from Snowball
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
-  workflow_dispatch:          # adds a "Run workflow" button for an instant update
+    - cron: "7,17,27,37,47,57 * * * *"   # about every 10 minutes, off the busy top-of-hour slots
+  workflow_dispatch:                    # adds a "Run workflow" button for an instant update
 
 permissions:
   contents: write
