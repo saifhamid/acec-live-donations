@@ -1,0 +1,32 @@
+name: Update goal from Snowball
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
+  workflow_dispatch:          # adds a "Run workflow" button for an instant update
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read goal from Snowball
+        run: |
+          GOAL=$(curl -fsSL "https://acec-california-scholarship-foundation.snwbll.com/thermometers/acec-california-scholarship-foundation-raffle-tickets-5" \
+            | grep -oP 'var goal\s*=\s*"\K[0-9.]+' | head -1)
+          if [ -z "$GOAL" ]; then echo "Couldn't find the goal on the Snowball page"; exit 1; fi
+          echo "Snowball goal: $GOAL"
+          printf '{"goal": %s}\n' "$GOAL" > goal.json
+
+      - name: Save if it changed
+        run: |
+          if git diff --quiet -- goal.json; then echo "Goal unchanged"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add goal.json
+          git commit -m "Update goal from Snowball"
+          git push
